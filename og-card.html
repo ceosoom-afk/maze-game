@@ -1,0 +1,70 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  *{box-sizing:border-box;margin:0;}
+  html,body{width:1200px;height:630px;overflow:hidden;}
+  body{
+    background:#0E1420;color:#E9EFF6;
+    font-family:"IBM Plex Mono",monospace;
+    display:flex;align-items:center;gap:56px;
+    padding:0 72px;
+  }
+  .glow{position:absolute;width:760px;height:760px;right:-200px;top:-180px;
+    background:radial-gradient(circle,rgba(123,227,208,.13) 0%,rgba(14,20,32,0) 62%);}
+  .copy{flex:1;position:relative;z-index:2;display:flex;flex-direction:column;gap:22px;}
+  .eyebrow{font-size:17px;letter-spacing:.3em;text-transform:uppercase;color:#7BE3D0;}
+  h1{font-family:Syne,sans-serif;font-weight:800;font-size:82px;letter-spacing:-0.035em;line-height:1;}
+  h1 .dot{color:#7BE3D0;}
+  p{font-size:23px;line-height:1.55;color:#93A6BC;max-width:20ch;word-break:keep-all;}
+  .meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  .chip{font-size:16px;color:#C6D3E2;background:#1F2B3C;border:1px solid #35495F;
+    border-radius:999px;padding:9px 17px;}
+  .chip.exit{color:#FFB454;border-color:#5A4526;background:#241D12;}
+  .art{position:relative;z-index:2;flex:none;}
+  canvas{display:block;width:430px;height:430px;border-radius:22px;
+    border:1px solid #35495F;background:#18212F;}
+</style></head><body>
+<div class="glow"></div>
+<div class="copy">
+  <div class="eyebrow">Maze Escape</div>
+  <h1>한밤의 미로<span class="dot">.</span></h1>
+  <p>매번 새로 만들어지는 미로를 탈출하세요.</p>
+  <div class="meta">
+    <span class="chip">난이도 4단계</span>
+    <span class="chip">설치 없이 바로</span>
+    <span class="chip exit">◻ 출구는 오른쪽 아래</span>
+  </div>
+</div>
+<div class="art"><canvas id="c" width="860" height="860"></canvas></div>
+<script>
+var n=13,DIRS={n:{dx:0,dy:-1,opp:'s'},s:{dx:0,dy:1,opp:'n'},e:{dx:1,dy:0,opp:'w'},w:{dx:-1,dy:0,opp:'e'}};
+var seed=20260916;function rnd(){seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296;}
+var cells=[];for(var i=0;i<n*n;i++)cells.push({n:1,e:1,s:1,w:1,seen:0});
+var st=[0];cells[0].seen=1;
+while(st.length){var cur=st[st.length-1],cx=cur%n,cy=(cur-cx)/n,op=[];
+ for(var k in DIRS){var d=DIRS[k],nx=cx+d.dx,ny=cy+d.dy;
+  if(nx<0||ny<0||nx>=n||ny>=n)continue;if(cells[ny*n+nx].seen)continue;op.push([k,ny*n+nx]);}
+ if(!op.length){st.pop();continue;}
+ var pk=op[(rnd()*op.length)|0];cells[cur][pk[0]]=0;cells[pk[1]][DIRS[pk[0]].opp]=0;cells[pk[1]].seen=1;st.push(pk[1]);}
+var ctx=document.getElementById('c').getContext('2d'),S=860,pad=34,cell=(S-pad*2)/n;
+function X(v){return pad+v*cell;}
+ctx.fillStyle='#18212F';ctx.fillRect(0,0,S,S);
+ctx.fillStyle='#212D3E';for(var gy=0;gy<=n;gy++)for(var gx=0;gx<=n;gx++)ctx.fillRect(X(gx)-2,X(gy)-2,4,4);
+// a short trail from the start
+var trail=[[0,0],[1,0],[1,1],[2,1]];
+ctx.fillStyle='rgba(123,227,208,0.13)';
+trail.forEach(function(t){ctx.fillRect(X(t[0])+cell*.12,X(t[1])+cell*.12,cell*.76,cell*.76);});
+var ex=X(n-1),ey=X(n-1);
+ctx.fillStyle='#FFB454';ctx.globalAlpha=.18;ctx.fillRect(ex+cell*.1,ey+cell*.1,cell*.8,cell*.8);
+ctx.globalAlpha=1;ctx.strokeStyle='#FFB454';ctx.lineWidth=cell*.09;
+ctx.strokeRect(ex+cell*.26,ey+cell*.26,cell*.48,cell*.48);
+ctx.strokeStyle='#4E6884';ctx.lineWidth=4.4;ctx.lineCap='round';ctx.beginPath();
+for(var y=0;y<n;y++)for(var x=0;x<n;x++){var c=cells[y*n+x],x0=X(x),y0=X(y),x1=X(x+1),y1=X(y+1);
+ if(c.n){ctx.moveTo(x0,y0);ctx.lineTo(x1,y0);}if(c.w){ctx.moveTo(x0,y0);ctx.lineTo(x0,y1);}
+ if(y===n-1&&c.s){ctx.moveTo(x0,y1);ctx.lineTo(x1,y1);}if(x===n-1&&c.e){ctx.moveTo(x1,y0);ctx.lineTo(x1,y1);}}
+ctx.stroke();
+var px=X(2)+cell/2,py=X(1)+cell/2;
+ctx.shadowColor='#7BE3D0';ctx.shadowBlur=cell*1.1;ctx.fillStyle='#7BE3D0';
+ctx.beginPath();ctx.arc(px,py,cell*.28,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+</script></body></html>
