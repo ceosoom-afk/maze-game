@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>한밤의 미로</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#0E1420;
+    --panel:#18212F;
+    --panel-2:#1F2B3C;
+    --line:#35495F;
+    --wall:#4E6884;
+    --ink:#E9EFF6;
+    --muted:#93A6BC;
+    --accent:#7BE3D0;
+    --exit:#FFB454;
+    --danger:#FF7A7A;
+    --radius:14px;
+    color-scheme:dark;
+  }
+  [hidden]{display:none!important;}
+  img{max-width:100%;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    -webkit-font-smoothing:antialiased;
+  }
+  .shell{
+    min-height:100%;
+    box-sizing:border-box;
+    padding-inline:16px;
+    padding-block:20px 28px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    align-items:center;
+  }
+  .wrap{width:100%;max-width:560px;display:flex;flex-direction:column;gap:14px;}
+
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  h1{
+    font-family:Syne,"IBM Plex Mono",sans-serif;
+    font-weight:800;
+    font-size:clamp(22px,6vw,30px);
+    letter-spacing:-0.02em;
+    margin:0;
+    text-wrap:balance;
+  }
+  h1 .dot{color:var(--accent);}
+  .tagline{
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  }
+
+  .rail{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .stat{background:var(--panel);padding:9px 10px;display:flex;flex-direction:column;gap:3px;}
+  .stat b{
+    font-family:Syne,sans-serif;font-weight:600;font-size:17px;
+    font-variant-numeric:tabular-nums;letter-spacing:-0.01em;
+  }
+  .stat span{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
+
+  .board{
+    position:relative;
+    width:100%;
+    aspect-ratio:1;
+    max-width:100%;
+    border-radius:var(--radius);
+    background:var(--panel);
+    border:1px solid var(--line);
+    overflow:hidden;
+    touch-action:none;
+  }
+  canvas{display:block;width:100%;height:100%;}
+
+  .banner{
+    position:absolute;inset:auto 0 0 0;
+    background:linear-gradient(180deg,rgba(14,20,32,0) 0%,rgba(14,20,32,.94) 38%);
+    padding:34px 16px 16px;
+    display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;
+  }
+  .banner h2{
+    font-family:Syne,sans-serif;font-weight:800;font-size:20px;margin:0;color:var(--exit);
+  }
+  .banner p{margin:0;font-size:12px;color:var(--muted);}
+
+  .controls{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
+
+  .dpad{
+    display:grid;
+    grid-template-columns:repeat(3,46px);
+    grid-template-rows:repeat(2,46px);
+    gap:6px;
+  }
+  .dpad button{grid-row:2;}
+  .dpad button[data-dir="n"]{grid-column:2;grid-row:1;}
+  .dpad button[data-dir="w"]{grid-column:1;}
+  .dpad button[data-dir="s"]{grid-column:2;}
+  .dpad button[data-dir="e"]{grid-column:3;}
+
+  button{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:13px;
+    color:var(--ink);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 14px;
+    cursor:pointer;
+    transition:background .12s ease,border-color .12s ease,transform .06s ease;
+  }
+  button:hover{background:#27364b;border-color:var(--wall);}
+  button:active{transform:translateY(1px);}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .dpad button{padding:0;font-size:16px;color:var(--accent);}
+
+  .actions{display:flex;flex-direction:column;gap:8px;flex:1;min-width:190px;}
+  .actions .row{display:flex;gap:8px;}
+  .actions .row > *{flex:1;}
+  .primary{background:var(--accent);color:#0C1521;border-color:var(--accent);font-weight:500;}
+  .primary:hover{background:#96ecdc;border-color:#96ecdc;}
+
+  select{
+    font-family:"IBM Plex Mono",monospace;font-size:13px;
+    color:var(--ink);background:var(--panel-2);
+    border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;
+  }
+  select:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  .hint{font-size:11px;color:var(--muted);line-height:1.6;text-align:center;}
+  kbd{
+    background:var(--panel-2);border:1px solid var(--line);border-bottom-width:2px;
+    border-radius:5px;padding:1px 5px;font-family:inherit;font-size:10px;color:var(--ink);
+  }
+  @media (max-width:420px){
+    .rail{grid-template-columns:repeat(2,1fr);}
+    .dpad{grid-template-columns:repeat(3,44px);grid-template-rows:repeat(2,44px);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important;}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="wrap">
+    <header>
+      <h1>한밤의 미로<span class="dot">.</span></h1>
+      <div class="tagline">출구는 오른쪽 아래</div>
+    </header>
+
+    <div class="rail">
+      <div class="stat"><b id="statLevel">1</b><span>단계</span></div>
+      <div class="stat"><b id="statSize">8 × 8</b><span>크기</span></div>
+      <div class="stat"><b id="statMoves">0</b><span>이동</span></div>
+      <div class="stat"><b id="statTime">0.0초</b><span>시간</span></div>
+    </div>
+
+    <div class="board" id="board">
+      <canvas id="maze"></canvas>
+      <div class="banner" id="banner" hidden>
+        <h2 id="bannerTitle">탈출 성공</h2>
+        <p id="bannerBody"></p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="dpad">
+        <button type="button" data-dir="n" aria-label="위로">↑</button>
+        <button type="button" data-dir="w" aria-label="왼쪽으로">←</button>
+        <button type="button" data-dir="s" aria-label="아래로">↓</button>
+        <button type="button" data-dir="e" aria-label="오른쪽으로">→</button>
+      </div>
+      <div class="actions">
+        <select id="level" aria-label="난이도">
+          <option value="8">쉬움 — 8 × 8</option>
+          <option value="14" selected>보통 — 14 × 14</option>
+          <option value="20">어려움 — 20 × 20</option>
+          <option value="28">지옥 — 28 × 28</option>
+        </select>
+        <div class="row">
+          <button type="button" id="peek">길 엿보기</button>
+          <button type="button" id="newMaze" class="primary">새 미로</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="hint">
+      <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> 또는 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 로 이동 · 화면을 밀어도 움직입니다 · <kbd>R</kbd> 새 미로
+    </p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var canvas = document.getElementById('maze');
+  var ctx = canvas.getContext('2d');
+  var board = document.getElementById('board');
+  var banner = document.getElementById('banner');
+  var bannerTitle = document.getElementById('bannerTitle');
+  var bannerBody = document.getElementById('bannerBody');
+  var levelSel = document.getElementById('level');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var C = {
+    bg:'#18212F', grid:'#212D3E', wall:'#4E6884',
+    trail:'rgba(123,227,208,0.13)', trailEdge:'rgba(123,227,208,0.30)',
+    player:'#7BE3D0', exit:'#FFB454', path:'rgba(255,180,84,0.55)'
+  };
+
+  var S = {
+    n:14, cells:[], px:0, py:0, dx:0, dy:0,
+    visited:null, moves:0, level:1, startedAt:0, elapsed:0,
+    running:false, solved:false, peeks:0, path:null, pathUntil:0
+  };
+
+  var DIRS = {
+    n:{dx:0,dy:-1,opp:'s'}, s:{dx:0,dy:1,opp:'n'},
+    e:{dx:1,dy:0,opp:'w'}, w:{dx:-1,dy:0,opp:'e'}
+  };
+
+  function idx(x,y){ return y*S.n + x; }
+
+  function generate(n){
+    var cells = new Array(n*n);
+    for(var i=0;i<n*n;i++) cells[i] = {n:true,e:true,s:true,w:true,seen:false};
+    var stack = [0];
+    cells[0].seen = true;
+    while(stack.length){
+      var cur = stack[stack.length-1];
+      var cx = cur % n, cy = (cur - cx) / n;
+      var open = [];
+      for(var key in DIRS){
+        var d = DIRS[key];
+        var nx = cx + d.dx, ny = cy + d.dy;
+        if(nx<0||ny<0||nx>=n||ny>=n) continue;
+        if(cells[ny*n+nx].seen) continue;
+        open.push([key,ny*n+nx]);
+      }
+      if(!open.length){ stack.pop(); continue; }
+      var pick = open[(Math.random()*open.length)|0];
+      cells[cur][pick[0]] = false;
+      cells[pick[1]][DIRS[pick[0]].opp] = false;
+      cells[pick[1]].seen = true;
+      stack.push(pick[1]);
+    }
+    return cells;
+  }
+
+  function solve(){
+    var n = S.n, total = n*n, goal = total-1;
+    var prev = new Int32Array(total).fill(-1);
+    var seen = new Uint8Array(total);
+    var start = idx(S.px, S.py);
+    var queue = [start];
+    seen[start] = 1;
+    for(var h=0; h<queue.length; h++){
+      var cur = queue[h];
+      if(cur === goal) break;
+      var cx = cur % n, cy = (cur - cx) / n;
+      for(var key in DIRS){
+        if(S.cells[cur][key]) continue;
+        var d = DIRS[key];
+        var nx = cx + d.dx, ny = cy + d.dy;
+        if(nx<0||ny<0||nx>=n||ny>=n) continue;
+        var ni = ny*n + nx;
+        if(seen[ni]) continue;
+        seen[ni] = 1; prev[ni] = cur; queue.push(ni);
+      }
+    }
+    var path = [], node = goal;
+    while(node !== -1){ path.push(node); node = prev[node]; }
+    return path.reverse();
+  }
+
+  function reset(keepLevel){
+    S.n = parseInt(levelSel.value, 10);
+    S.cells = generate(S.n);
+    S.px = 0; S.py = 0; S.dx = 0; S.dy = 0;
+    S.visited = new Uint8Array(S.n*S.n);
+    S.visited[0] = 1;
+    S.moves = 0; S.elapsed = 0; S.startedAt = 0;
+    S.running = false; S.solved = false; S.peeks = 0;
+    S.path = null; S.pathUntil = 0;
+    if(!keepLevel) S.level = 1;
+    banner.hidden = true;
+    resize();
+    updateStats();
+  }
+
+  function updateStats(){
+    document.getElementById('statLevel').textContent = S.level;
+    document.getElementById('statSize').textContent = S.n + ' × ' + S.n;
+    document.getElementById('statMoves').textContent = S.moves;
+    document.getElementById('statTime').textContent = S.elapsed.toFixed(1) + '초';
+  }
+
+  function move(dir){
+    if(S.solved) return;
+    var d = DIRS[dir];
+    if(!d) return;
+    var cur = idx(S.px, S.py);
+    if(S.cells[cur][dir]) return;
+    S.px += d.dx; S.py += d.dy;
+    S.visited[idx(S.px,S.py)] = 1;
+    S.moves++;
+    if(!S.running){ S.running = true; S.startedAt = performance.now() - S.elapsed*1000; }
+    if(reduceMotion){ S.dx = S.px; S.dy = S.py; }
+    if(S.px === S.n-1 && S.py === S.n-1) win();
+    updateStats();
+  }
+
+  function win(){
+    S.solved = true; S.running = false;
+    banner.hidden = false;
+    bannerTitle.textContent = '탈출 성공';
+    var extra = S.peeks ? ' · 엿보기 ' + S.peeks + '회' : '';
+    bannerBody.textContent = S.moves + '번 이동 · ' + S.elapsed.toFixed(1) + '초' + extra + ' — 새 미로를 눌러 다음 단계로';
+  }
+
+  function peek(){
+    if(S.solved) return;
+    S.peeks++;
+    S.path = solve();
+    S.pathUntil = performance.now() + 1400;
+  }
+
+  /* ---------- rendering ---------- */
+  var size = 0, cell = 0, pad = 0;
+
+  function resize(){
+    var rect = board.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    size = Math.max(rect.width, 1);
+    canvas.width = Math.round(size * dpr);
+    canvas.height = Math.round(size * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    pad = Math.max(8, size * 0.03);
+    cell = (size - pad*2) / S.n;
+  }
+
+  function cx(x){ return pad + x*cell; }
+
+  function draw(now){
+    ctx.clearRect(0,0,size,size);
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0,0,size,size);
+
+    // faint junction dots
+    ctx.fillStyle = C.grid;
+    var dot = Math.max(1, cell*0.045);
+    for(var gy=0; gy<=S.n; gy++){
+      for(var gx=0; gx<=S.n; gx++){
+        ctx.fillRect(cx(gx)-dot/2, cx(gy)-dot/2, dot, dot);
+      }
+    }
+
+    // trail
+    ctx.fillStyle = C.trail;
+    for(var i=0;i<S.visited.length;i++){
+      if(!S.visited[i]) continue;
+      var vx = i % S.n, vy = (i - vx) / S.n;
+      ctx.fillRect(cx(vx)+cell*0.12, cx(vy)+cell*0.12, cell*0.76, cell*0.76);
+    }
+
+    // peeked solution
+    if(S.path && now < S.pathUntil){
+      ctx.strokeStyle = C.path;
+      ctx.lineWidth = Math.max(1.5, cell*0.16);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for(var p=0;p<S.path.length;p++){
+        var qx = S.path[p] % S.n, qy = (S.path[p]-qx)/S.n;
+        var mx = cx(qx)+cell/2, my = cx(qy)+cell/2;
+        if(p===0) ctx.moveTo(mx,my); else ctx.lineTo(mx,my);
+      }
+      ctx.stroke();
+    } else if(S.path && now >= S.pathUntil){
+      S.path = null;
+    }
+
+    // exit cell
+    var ex = cx(S.n-1), ey = cx(S.n-1);
+    ctx.fillStyle = C.exit;
+    ctx.globalAlpha = 0.18;
+    ctx.fillRect(ex+cell*0.1, ey+cell*0.1, cell*0.8, cell*0.8);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.exit;
+    ctx.lineWidth = Math.max(1, cell*0.08);
+    ctx.strokeRect(ex+cell*0.26, ey+cell*0.26, cell*0.48, cell*0.48);
+
+    // walls
+    ctx.strokeStyle = C.wall;
+    ctx.lineWidth = Math.max(1, Math.min(3, cell*0.14));
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for(var y=0;y<S.n;y++){
+      for(var x=0;x<S.n;x++){
+        var c = S.cells[idx(x,y)];
+        var x0 = cx(x), y0 = cx(y), x1 = cx(x+1), y1 = cx(y+1);
+        if(c.n){ ctx.moveTo(x0,y0); ctx.lineTo(x1,y0); }
+        if(c.w){ ctx.moveTo(x0,y0); ctx.lineTo(x0,y1); }
+        if(y === S.n-1 && c.s){ ctx.moveTo(x0,y1); ctx.lineTo(x1,y1); }
+        if(x === S.n-1 && c.e){ ctx.moveTo(x1,y0); ctx.lineTo(x1,y1); }
+      }
+    }
+    ctx.stroke();
+
+    // player
+    var t = reduceMotion ? 1 : 0.28;
+    S.dx += (S.px - S.dx) * t;
+    S.dy += (S.py - S.dy) * t;
+    var pxc = cx(S.dx) + cell/2, pyc = cx(S.dy) + cell/2;
+    var r = Math.max(2.5, cell*0.26);
+    var pulse = S.solved ? 1.25 : 1;
+    ctx.shadowColor = S.solved ? C.exit : C.player;
+    ctx.shadowBlur = cell*0.9;
+    ctx.fillStyle = S.solved ? C.exit : C.player;
+    ctx.beginPath();
+    ctx.arc(pxc, pyc, r*pulse, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  function loop(now){
+    if(S.running){
+      S.elapsed = (now - S.startedAt)/1000;
+      updateStats();
+    }
+    draw(now);
+    requestAnimationFrame(loop);
+  }
+
+  /* ---------- input ---------- */
+  var KEYS = {
+    ArrowUp:'n', ArrowDown:'s', ArrowLeft:'w', ArrowRight:'e',
+    w:'n', a:'w', s:'s', d:'e', W:'n', A:'w', S:'s', D:'e'
+  };
+  window.addEventListener('keydown', function(e){
+    if(e.metaKey || e.ctrlKey || e.altKey) return;
+    if(e.key === 'r' || e.key === 'R'){ nextMaze(); return; }
+    var dir = KEYS[e.key];
+    if(!dir) return;
+    e.preventDefault();
+    move(dir);
+  }, {passive:false});
+
+  document.querySelectorAll('.dpad button').forEach(function(b){
+    b.addEventListener('click', function(){ move(b.dataset.dir); });
+  });
+
+  var touchStart = null;
+  board.addEventListener('pointerdown', function(e){ touchStart = {x:e.clientX, y:e.clientY}; });
+  board.addEventListener('pointerup', function(e){
+    if(!touchStart) return;
+    var ddx = e.clientX - touchStart.x, ddy = e.clientY - touchStart.y;
+    touchStart = null;
+    if(Math.abs(ddx) < 18 && Math.abs(ddy) < 18) return;
+    move(Math.abs(ddx) > Math.abs(ddy) ? (ddx > 0 ? 'e' : 'w') : (ddy > 0 ? 's' : 'n'));
+  });
+
+  function nextMaze(){
+    var advance = S.solved;
+    var lvl = advance ? S.level + 1 : S.level;
+    reset(true);
+    S.level = lvl;
+    updateStats();
+  }
+
+  document.getElementById('newMaze').addEventListener('click', nextMaze);
+  document.getElementById('peek').addEventListener('click', peek);
+  levelSel.addEventListener('change', function(){ reset(false); });
+  window.addEventListener('resize', resize);
+
+  /* ---------- boot (with hot-reload state) ---------- */
+  function start(saved){
+    reset(false);
+    if(saved && saved.level) levelSel.value = String(saved.size || S.n);
+    if(saved && saved.level){ reset(true); S.level = saved.level; updateStats(); }
+    requestAnimationFrame(loop);
+  }
+  try{
+    if(window.claude && window.claude.hot && window.claude.hot.snapshot){
+      window.claude.hot.snapshot(function(){ return {level:S.level, size:S.n}; });
+    }
+  }catch(err){}
+  if(window.claude && window.claude.hot && window.claude.hot.ready){
+    window.claude.hot.ready(start);
+  } else {
+    start((window.claude && window.claude.hot && window.claude.hot.data) || {});
+  }
+})();
+</script>
+</body>
+</html>
